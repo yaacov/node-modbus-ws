@@ -3,6 +3,12 @@ NodeJS Modbus to WebSocket bridge
 
 [![NPM Version](https://img.shields.io/npm/v/gm.svg?style=flat)](https://www.npmjs.com/package/modbus-ws)
 
+The modbus-ws server allows a browser to connect to a modbus device, using websockets.
+When the server is running, and connected to a serial line or a modbusTCP device, 
+a web browser can send websocket requests and control a modbus device.
+
+With this server you can build web pages that will happily monitor and send requests to your modbus project or robot.
+
 ### Install
 Install the server locally.
 ```
