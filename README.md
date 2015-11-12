@@ -4,7 +4,7 @@ NodeJS Modbus to WebSocket bridge
 ### Install
 Install the server locally.
 ```
-npm install modbus-ws</pre>
+npm install modbus-ws
 ```
 When installed laocally, use:
 ```
@@ -14,7 +14,7 @@ to run the server.
 
 You can also install the server globally, to add the modbus-ws command to your path.
 ```
-sudo npm install modbus-ws -g</pre>
+sudo npm install modbus-ws -g
 ```
 
 Install serialport module if you want to use serial port (globally or locally).
