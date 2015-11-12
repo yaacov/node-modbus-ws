@@ -14,6 +14,7 @@ var app = express();
 app.locals.appTitle = 'Modbus-WS';
 app.locals.appInfo = appInfo;
 app.locals.tcpport = 3000;
+app.locals.baudrate = 9600;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
