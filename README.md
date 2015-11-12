@@ -1,6 +1,8 @@
 # node-modbus-ws
 NodeJS Modbus to WebSocket bridge
 
+[![NPM Version](https://img.shields.io/npm/v/gm.svg?style=flat)](https://www.npmjs.com/package/modbus-ws)
+
 ### Install
 Install the server locally.
 ```
@@ -39,4 +41,4 @@ modbus-ws --help
 
 ### Examples
 
-Load an example file to a web browser, and watch for the data received from server.
+See the examples directory in the server's code tree, load an example file to a web browser, and watch for the data received from server.
