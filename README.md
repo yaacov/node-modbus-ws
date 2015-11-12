@@ -42,4 +42,5 @@ modbus-ws --help
 ### Examples
 
 When the server is running it will transfer websocket requests into modbus requests and return the replays received as websocket events.
+
 See the examples directory in the server's code tree, load an example file to a web browser, and watch for the data received from server.
