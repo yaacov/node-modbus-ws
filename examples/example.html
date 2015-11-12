@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>test</title>
+<style>
+body {
+    padding: 50px;
+    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+pre {
+    margin: 20px;
+    color: blue;
+}
+ul {
+    margin-bottom: 14px;
+    list-style: none;
+}
+li {
+    width: 500px; 
+    height: 30px;  
+    margin: 0 0 7px 0;
+    display: block;
+    margin: 10px 0 7px 0;
+    font-size: 18px;
+    color: white;
+    padding: 5px 0 0 20px;
+    text-decoration: none;
+}
+.orange { background-color: #F5876E; }
+.blue{ background-color: #62A9DC; }
+.purple { background-color: #988CC3; }
+</style>
+</head>
+<body>
+    <h1>Modbus-WS - Modbus to Websocket</h1>
+    <p>Welcome to Modbus-WS example page</p>
+
+    <h3>Install the modbus-ws server</h3>
+    
+    <p>Install the server globally, to add the modbus-ws command to your path.</p>
+    <pre>sudo npm install modbus-ws -g</pre>
+    
+    <p>Install serialport module if you want to use serial port.</p>
+    <pre>sudo npm install serialport -g</pre>
+    
+    <h3>Start the modbus-ws server</h3>
+    
+    <p>Run the server using a serial port:</p>
+    <pre>modbus-ws -s /dev/ttyUSB0</pre>
+    <p>or using a simulated modbus device:</p>
+    <pre>modbus-ws</pre>
+    <p>see more options:</p>
+    <pre>modbus-ws --help</pre>
+    
+    <h3>Comunicate to device</h3>
+    
+    <p>Load this page to a web browser, and watch for the data received via websocket.</p>
+    
+    <h5>Data received:</h5>
+    
+    <ul id="data">
+    </ul>
+    
+    <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+    <script>
+        var socket = io("ws://127.0.0.1:3000/");
+        
+        var addEntry = function(text, color) {
+            var list = document.getElementById('data');
+            
+            // don't let list get too long
+            if (list.children.length > 10) {
+                while (list.firstChild) {
+                    list.removeChild(list.firstChild);
+                }
+            }
+            
+            var entry = document.createElement('li');
+            entry.className = color;
+            entry.appendChild(document.createTextNode(text));
+            list.appendChild(entry);
+        }
+        
+        socket.on('data', function(data){
+            console.log('received:', data);
+            
+            addEntry(data.values.toString(), "orange");
+        });
+        
+        socket.on('connect', function() {
+            addEntry('connected', "purple");
+            
+            socket.emit('getRegisters', {
+                "unit": 1,
+                "address": 0,
+                "length": 10,
+                "interval": 1000
+            });
+        });
+        
+        socket.on('disconnect', function() {
+            addEntry('disconnected', "blue");
+        });
+    </script>
+</body>
+</html>
