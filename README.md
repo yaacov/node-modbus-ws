@@ -51,7 +51,7 @@ modbus-ws --help
     -b, --baudrate <boud>   Set serial port baudrate. [9600]
     -i, --ip <ip>           Use tcp/ip, set slave url or ip address. [false]
     -P, --tcpport <number>  Server port number [3000]
-    -c, --cache             Use caching for modbus comunication. [false]
+    -c, --nocache           Do not use caching for modbus comunication. [false]
     -w, --nohttp            Run only websocket server, no httpd. [false]
 
   Examples:
@@ -63,10 +63,10 @@ modbus-ws --help
     modbus-ws
        when serial and tcp/ip are not used, default to test.
        create a bridge to a modbus simulated slave.
-    modbus-ws --ip 192.168.1.24 --cache
-       create a bridge with modbus cache.
-    modbus-ws --ip 192.168.1.24 --cache --nohttp
-       create a bridge with modbus cache without http web server.
+    modbus-ws --ip 192.168.1.24 --nocache
+       create a bridge with modbus without cache.
+    modbus-ws --ip 192.168.1.24 --nocache --nohttp
+       create a bridge with modbus without cache and without http web server.
 ```
 
 #### Client side code
