@@ -25,11 +25,11 @@ npm install modbus-ws -g
 
 This will add the **modbus-ws** command to your path. After install, you can run the server by typing **modbus-ws** on the command line.
 
-[ If install locally, run the server using the **modbus-ws.js** file in the bin directory of the server's code tree. ]
+[ If install locally, run the server using the **modbus-ws.js** file in the bin directory. ]
 
 #### Start the modbus-ws server
 
-Run the server using a serial port or tcp line:
+Run the server using a serial port or a tcp connection:
 ```
 modbus-ws -s /dev/ttyUSB0
 modbus-ws -i 192.168.1.42
