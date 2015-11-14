@@ -37,6 +37,17 @@ modbus-ws -s /dev/ttyUSB0
 modbus-ws -i 192.168.1.42
 ```
 
+After running the server will print out this message to the console:
+```
+----------------------------------------------------
+Modbus-WS server 1.1.1
+    Setup test (simulated) port.
+    Server is running, ws://127.0.0.1:3000
+    Setup modbus with caching.
+        Create cache db.
+        Create cache table
+----------------------------------------------------
+```
 #### Server help
 ```
 modbus-ws --help
