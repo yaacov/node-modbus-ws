@@ -189,7 +189,7 @@ var start = function(options, callback) {
     var baud = options.baudrate || 9600;
     var ip = options.ip || false;
     var test = options.test || true;
-    var nocache = options.nocache || false;
+    var noCache = options.nocache || false;
     var noHttp = options.nohttp || false;
     
     /* log server title and version
@@ -232,7 +232,7 @@ var start = function(options, callback) {
     
     /* set up caching
      */
-    if (nocache) {
+    if (noCache) {
         console.log("    Setup modbus without caching.");
         
         getRegisters = _getRegisters;

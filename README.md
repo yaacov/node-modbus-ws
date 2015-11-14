@@ -42,12 +42,15 @@ After running the server will print out this message to the console:
 ----------------------------------------------------
 Modbus-WS server 1.1.1
     Setup serial port: /dev/ttyUSB0 9600
-    Server is running, ws://127.0.0.1:3000
+    Server is running, http://127.0.0.1:3000
     Setup modbus with caching.
         Create cache db.
         Create cache table
 ----------------------------------------------------
 ```
+
+Ctrl+C will stop the server.
+
 #### Server help
 ```
 modbus-ws --help
