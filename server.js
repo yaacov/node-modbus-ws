@@ -221,13 +221,13 @@ var start = function(options, callback) {
         // run only web sockets server
         console.log("    Server is running, ws://127.0.0.1:" + tcpPort);
          
-        run_wsd(tcpPort, callback);
+        run_wsd(tcpPort);
     } else {
         // run express application
         // with web sockets
         console.log("    Server is running, http://127.0.0.1:" + tcpPort);
         
-        run_httpd(tcpPort, callback);
+        run_httpd(tcpPort);
     }
     
     /* set up caching
@@ -249,6 +249,9 @@ var start = function(options, callback) {
     
     console.log("----------------------------------------------------");
     console.log();
+    
+    // callback
+    if (callback) callback();
 }
 
 module.exports = {};

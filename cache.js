@@ -181,7 +181,7 @@ var _emitDataGetEvent = function(unit, address, data) {
         WHERE unit = ? AND reg >= ? AND reg < ? AND snd < ?";
     const UPDATE_SND = "UPDATE cache SET snd = ? \
         WHERE unit = ? AND reg >= ? AND reg < ?";
-        
+    
     var now = Date.now();
     var length = data.length;
     
@@ -219,13 +219,19 @@ var _getRegisters = function(unit, address, length) {
     const UPDATE_REG = "UPDATE cache SET val= ?, ans = ?, ask = 0 \
         WHERE unit = ? AND reg >= ? AND reg < ?";
     
+    var now = Date.now();
+    
     _modbus.writeFC4(unit, address, length,
         function(err, msg) {
             if (err) {
                 io.emit('error', {'err': err});
             } else {
-                // insert valid data and clear ask signal
-                db.run(UPDATE_REG, unit, address, address + length);
+                // update data in cache, and clear ask flag
+                var stmt = db.prepare(UPDATE_REG);
+                for (i = 0; i < length; i++) {
+                    stmt.run(msg.data[i], now, address + i);
+                }
+                stmt.finalize();
                 
                 // emit data get event
                 _emitDataGetEvent(unit, address, msg.data);
