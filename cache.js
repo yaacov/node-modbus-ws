@@ -21,7 +21,7 @@ var _modbus;
 
 const VALID_ANS = 5000; // answers are valid for N-ms.
 const FORGET_ASK = 10000; // if not answered after N-ms, forget ask request.
-const RESEND_WAIT = 200; // do not trigger new io-get event for N-ms.
+const RESEND_WAIT = 1000; // do not trigger new io-get event for N-ms.
 const MAX_LENGTH = 10; // max registers to ask in one modbus request.
 const POLL_INTERVAL = 1000; // wait N-ms between modbus polls.
 
@@ -107,19 +107,11 @@ var getRegisters = function(unit, address, length) {
             } else {
                 // if we have valid data in cache
                 if (rows.length == length) {
-                    // update cache
-                    db.run(UPDATE_SND, now, unit, address, address + length);
-                    
                     // fill the data arry
                     rows.forEach(function(row, i) {data[i] = row.val;});
                     
-                    // triger data-get event
-                    _io.emit('data', {
-                        'id': unit,
-                        'address': address,
-                        'values': data,
-                        'flag': 'get'
-                    });
+                    // emit data get event
+                    _emitDataGetEvent(unit, address, data);
                 }
             }
         }
@@ -217,7 +209,7 @@ var _emitDataGetEvent = function(unit, address, data) {
  */
 var _getRegisters = function(unit, address, length) {
     const UPDATE_REG = "UPDATE cache SET val= ?, ans = ?, ask = 0 \
-        WHERE unit = ? AND reg >= ? AND reg < ?";
+        WHERE unit = ? AND reg = ?";
     
     var now = Date.now();
     
@@ -229,7 +221,7 @@ var _getRegisters = function(unit, address, length) {
                 // update data in cache, and clear ask flag
                 var stmt = db.prepare(UPDATE_REG);
                 for (i = 0; i < length; i++) {
-                    stmt.run(msg.data[i], now, address + i);
+                    stmt.run(msg.data[i], now, unit, address + i);
                 }
                 stmt.finalize();
                 
@@ -248,7 +240,7 @@ var _getRegisters = function(unit, address, length) {
  * @param {array} data the new values to set into registers
  */
 var setRegisters = function(unit, address, data) {
-    const UPDATE_REG = "UPDATE cache SET ans = 0 \
+    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0 \
         WHERE unit = ? AND reg >= ? AND reg < ?";
     
     var length = data.length;
