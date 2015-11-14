@@ -170,7 +170,7 @@ var pollNextGroup = function() {
 }
 
 /**
- * Set modbus registers
+ * emit data get event to browser
  *
  * @param {number} unit the unit id.
  * @param {number} address the first register to set.
