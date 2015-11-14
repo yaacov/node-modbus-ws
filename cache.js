@@ -21,9 +21,9 @@ var _modbus;
 
 const VALID_ANS = 5000; // answers are valid for N-ms.
 const FORGET_ASK = 10000; // if not answered after N-ms, forget ask request.
-const RESEND_WAIT = 1000; // do not trigger new io-get event for N-ms.
+const RESEND_WAIT = 200; // do not trigger new io-get event for N-ms.
 const MAX_LENGTH = 10; // max registers to ask in one modbus request.
-const POLL_INTERVAL = 100; // wait N-ms between modbus polls.
+const POLL_INTERVAL = 1000; // wait N-ms between modbus polls.
 
 /**
  * Create the cache database.
