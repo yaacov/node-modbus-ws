@@ -1,8 +1,9 @@
 'use strict';
+
 var io = require('socket.io-client')
 var server = require('../server');
 
-var socketURL = 'http://127.0.01:3000';
+var socketURL = 'ws://127.0.01:3000';
 var options ={
   transports: ['websocket'],
   'force new connection': true
@@ -12,7 +13,13 @@ var expect = require('chai').expect;
 
 describe('Modbus-WS server', function() {
     before(function(done) {
-        server.start(done);
+        var serverOptions = {
+            'tcpport': 3000,
+            'test': true,
+            'nohttp': true,
+            'nocache': false
+        };
+        server.start(serverOptions, done);
     });
     
     it('Should get registers', function(done) {
@@ -25,7 +32,7 @@ describe('Modbus-WS server', function() {
                 "length": 3
             });
         });
-
+        
         socket.on('data', function(data){
             expect(data).to.have.property('flag');
             expect(data.flag).to.equal('get');

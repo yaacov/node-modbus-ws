@@ -18,10 +18,8 @@
 
 var program = require('commander');
 
-var app = require('../app');
 var server = require('../server');
-
-var version = app.locals.appInfo.version;
+var version = require('../package.json').version;
 var numberRegex = /^[0-9]*$/;
 
 // get user cli arguments
@@ -31,6 +29,8 @@ program
     .option('-b, --baudrate <boud>', 'Set serial port baudrate. [9600]', numberRegex, 9600)
     .option('-i, --ip <ip>', 'Use tcp/ip, set slave url or ip address. [false]', false)
     .option('-P, --tcpport <number>', 'Server port number [3000]', numberRegex, 3000)
+    .option('-c, --nocache', 'Do not use caching for modbus comunication. [false]', false)
+    .option('-w, --nohttp', 'Run only websocket server, no httpd. [false]', false)
     .on('--help', function(){
         console.log('  Examples:');
         console.log('');
@@ -41,15 +41,13 @@ program
         console.log('    modbus-ws');
         console.log('       when serial and tcp/ip are not used, default to test.');
         console.log('       create a bridge to a modbus simulated slave.');
+        console.log('    modbus-ws --ip 192.168.1.24 --nocache');
+        console.log('       create a bridge with modbus without cache.');
+        console.log('    modbus-ws --ip 192.168.1.24 --nocache --nohttp');
+        console.log('       create a bridge with modbus without cache and without http web server.');
         console.log('');
     })
     .parse(process.argv);
 
-// copy the cli arguments into the server's app object
-app.locals.serial = program.serial;
-app.locals.baudrate = program.baudrate;
-app.locals.ip = program.ip;
-app.locals.tcpport = program.tcpport;
-
 // start the server
-server.start();
+server.start(program);

@@ -14,13 +14,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF  THIS SOFTWARE.
  */
 
-var app = require('./app');
-var http = require('http').Server(app);
-var io = require('socket.io')(http);
+var io;
 var ModbusRTU = require("modbus-serial");
+var version = require('./package.json').version;
 
 var serialPort;
 var modbusRTU;
+
+var getRegisters;
+var setRegisters;
 
 /**
  * Write a Modbus "Read Input Registers" (FC=04) to serial port,
@@ -30,7 +32,7 @@ var modbusRTU;
  * @param {number} address the Data Address of the first register.
  * @param {number} length the total number of registers requested.
  */
-var getRegisters = function(unit, address, length) {
+var _getRegisters = function(unit, address, length) {
     modbusRTU.writeFC4(unit, address, length,
         function(err, msg) {
             if (err) {
@@ -56,7 +58,7 @@ var getRegisters = function(unit, address, length) {
  * @param {number} address the Data Address of the first register.
  * @param {array} values the array of values to write to registers.
  */
-var setRegisters = function(unit, address, values) {
+var _setRegisters = function(unit, address, values) {
     modbusRTU.writeFC16(unit, address, values,
         function(err, msg) {
             if (err) {
@@ -83,9 +85,13 @@ var setup = function() {
     io.on('connection', function(socket){
         var intervalIDs = [];
         
+        //console.log('client connected');
+        
         socket.on('disconnect', function(){
             // clear all periodically requests
             intervalIDs.map(clearInterval);
+            
+            //console.log('client disconnected');
         });
         
         socket.on('getRegisters', function(data){
@@ -124,29 +130,75 @@ var setup = function() {
  */
 var stop = function() {
     serialPort.close();
-    http.close();
     process.exit();
+}
+
+/**
+ * Run a websocket only server
+ *
+ * @param {number} tcpPort the tcp port to listen on
+ * @param {function} callback the function to call when done
+ */
+var run_wsd = function(tcpPort, callback) {
+    // run ws server
+    io = require('socket.io')(tcpPort);
+    
+    /* Setup WebSocket event listener
+     */
+    setup();
+    
+    // run the callback
+    if (callback) callback();
+}
+
+/**
+ * Run server with web application
+ *
+ * @param {number} tcpPort the tcp port to listen on
+ * @param {function} callback the function to call when done
+ */
+var run_httpd = function(tcpPort, callback) {
+    // run express application
+    // with websockets
+    var app = require('./app');
+    var http = require('http').Server(app);
+    io = require('socket.io')(http);
+    
+    /* Setup WebSocket event listener
+     */
+    setup();
+    
+    /* Setup http listener
+     * when using socket.io server, comment out this lines.
+     */
+    http.listen(tcpPort, function(){
+        // run the callback
+        if (callback) callback();
+    });
 }
 
 /**
  * start the modbus-ws server
  */
-var start = function(callback) {
-    var title = app.locals.appTitle;
-    var version = app.locals.appInfo.version;
-    var tcpPort = app.locals.tcpport;
-    var port = app.locals.serial;
-    var baud = app.locals.baudrate;
-    var port = app.locals.serial;
-    var ip = app.locals.ip;
-    var test = app.locals.test;
+var start = function(options, callback) {
+    /* set up some default options
+     */
+    var title = "Modbus-WS server";
+    var tcpPort = options.tcpport || 3000;
+    var port = options.serial || false;
+    var baud = options.baudrate || 9600;
+    var ip = options.ip || false;
+    var test = options.test || true;
+    var nocache = options.nocache || false;
+    var noHttp = options.nohttp || false;
     
     /* log server title and version
      */
     console.log();
+    console.log('----------------------------------------------------');
     console.log(title, version);
     
-    /* open serial port and setup modbus master
+    /* open a serial port and setup modbus master
      */
     if (ip) {
         console.log("    Setup tcp/ip port:", ip);
@@ -157,26 +209,46 @@ var start = function(callback) {
         console.log("    Setup serial port:", port, baud);
         serialPort = new SerialPort(port, {baudrate: baud});
     } else {
-        console.log("    Setup test (simulted) port.");
+        console.log("    Setup test (simulated) port.");
         serialPort = new ModbusRTU.TestPort();
     }
     modbusRTU = new ModbusRTU(serialPort);
     modbusRTU.open();
     
-    /* Setup WebSocket event listener
+    /* set up express web application / only web socket server
      */
-    console.log("    Setup WebSockets");
-    setup();
+    if (noHttp) {
+        // run only web sockets server
+        console.log("    Server is running, ws://127.0.0.1:" + tcpPort);
+         
+        run_wsd(tcpPort, callback);
+    } else {
+        // run express application
+        // with web sockets
+        console.log("    Server is running, http://127.0.0.1:" + tcpPort);
+        
+        run_httpd(tcpPort, callback);
+    }
     
-    /* Setup WebSocket event listener
+    /* set up caching
      */
-    http.listen(tcpPort, function(){
-      console.log('    Run server on *:' + tcpPort);
-      console.log();
-      
-      // run the callback
-      if (callback) callback();
-    });
+    if (nocache) {
+        console.log("    Setup modbus without caching.");
+        
+        getRegisters = _getRegisters;
+        setRegisters = _setRegisters;
+    } else {
+        var cache = require("./cache");
+        
+        console.log("    Setup modbus with caching.");
+        
+        cache.run(io, modbusRTU);
+        getRegisters = cache.getRegisters;
+        setRegisters = cache.setRegisters;
+    }
+    
+    console.log("----------------------------------------------------");
+    console.log();
 }
 
 module.exports = {};
