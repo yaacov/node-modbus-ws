@@ -95,9 +95,15 @@ var setup = function() {
         });
         
         socket.on('getRegisters', function(data){
+            // check event validity
+            if (!data) return;
+            
             var unit = data.unit;
             var address = data.address;
             var length = data.length;
+            
+            // check event validity
+            if (!unit || !address || !length) return;
             
             /* if client request an interval,
              * set a time interval and emit data
@@ -116,9 +122,15 @@ var setup = function() {
         });
         
         socket.on('setRegisters', function(data){
+            // check event validity
+            if (!data) return;
+            
             var unit = data.unit;
             var address = data.address;
             var values = data.values;
+            
+            // check event validity
+            if (!unit || !address || !values) return;
             
             setRegisters(unit, address, values);
         });
@@ -146,9 +158,6 @@ var run_wsd = function(tcpPort, callback) {
     /* Setup WebSocket event listener
      */
     setup();
-    
-    // run the callback
-    if (callback) callback();
 }
 
 /**
@@ -169,12 +178,8 @@ var run_httpd = function(tcpPort, callback) {
     setup();
     
     /* Setup http listener
-     * when using socket.io server, comment out this lines.
      */
-    http.listen(tcpPort, function(){
-        // run the callback
-        if (callback) callback();
-    });
+    http.listen(tcpPort);
 }
 
 /**
