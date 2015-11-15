@@ -103,7 +103,7 @@ var setup = function() {
             var length = data.length;
             
             // check event validity
-            if (!unit || !address || !length) return;
+            if (!unit || typeof address == 'undefined' || !length) return;
             
             /* if client request an interval,
              * set a time interval and emit data
@@ -130,7 +130,7 @@ var setup = function() {
             var values = data.values;
             
             // check event validity
-            if (!unit || !address || !values) return;
+            if (!unit || typeof address == 'undefined' || !values) return;
             
             setRegisters(unit, address, values);
         });
