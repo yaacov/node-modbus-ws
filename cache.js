@@ -88,8 +88,6 @@ var getRegisters = function(unit, address, length) {
         WHERE unit = ? AND reg >= ? AND reg < ? AND ask < ?";
     const SELECT_GET = "SELECT unit, reg, val FROM cache \
         WHERE unit = ? AND reg >= ? AND reg < ? AND ans > ?";
-    const UPDATE_SND = "UPDATE cache SET snd = ? \
-        WHERE unit = ? AND reg >= ? AND reg < ?";
     
     initRegisters(unit, address, length);
     
@@ -295,7 +293,7 @@ var run = function(io, modbus) {
         setTimeout(poll, POLL_INTERVAL);
     }
     
-    setTimeout(poll, 1000);
+    setTimeout(poll, 200);
 }
 
 /**
