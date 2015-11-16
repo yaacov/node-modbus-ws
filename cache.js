@@ -19,17 +19,17 @@ var db;
 var _io;
 var _modbus;
 
-const VALID_ANS = 10000; // answers are valid for N-ms.
+const VALID_ANS = 5000; // answers are valid for N-ms.
 const FORGET_ASK = 10000; // if not answered after N-ms, forget ask request.
 const MAX_LENGTH = 10; // max registers to ask in one modbus request.
-const POLL_INTERVAL = 500; // wait N-ms between modbus polls.
+const POLL_INTERVAL = 1000; // wait N-ms between modbus polls.
 
 const TYPE_INPUT_REG = 4;
 const TYPE_HOLDING_REG = 3;
 const TYPE_COIL = 1;
 const TYPE_DIGITAL_INPUT = 2;
 
-var RESEND_WAIT = 250; // do not trigger new io-get event for N-ms.
+var RESEND_WAIT = 500; // do not trigger new io-get event for N-ms.
 
 /**
  * Create the cache database.
@@ -91,12 +91,12 @@ var _debugReadAllRows = function() {
 var initRegisters = function(unit, type, register, length) {
     const INSERT_NEW = "INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?)";
     
-        // make sure each register has a row
-        var stmt = db.prepare(INSERT_NEW);
-        for (var i = register; i < (register + length); i++) {
-            stmt.run(unit, type,  i, 0, 0, 0, 0);
-        }
-        stmt.finalize();
+    // make sure each register has a row
+    var stmt = db.prepare(INSERT_NEW);
+    for (var i = register; i < (register + length); i++) {
+        stmt.run(unit, type,  i, 0, 0, 0, 0);
+    }
+    stmt.finalize();
 }
 
 /**
@@ -133,7 +133,8 @@ var getRegisters = function(unit, type, address, length) {
     const UPDATE_ASK = "UPDATE cache SET ask = ? \
         WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ask < ?";
     const SELECT_GET = "SELECT unit, reg, val FROM cache \
-        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ans > ? AND snd < ?";
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? \
+        AND ans > ? AND snd < ?";
     
     initRegisters(unit, type, address, length);
     
@@ -142,10 +143,12 @@ var getRegisters = function(unit, type, address, length) {
     
     db.serialize(function() {
         // set ask signal
-        db.run(UPDATE_ASK, now, unit, type, address, address + length, now - FORGET_ASK);
+        db.run(UPDATE_ASK, now, unit, type, address, address + length, 
+            now - FORGET_ASK);
         
         // check for data in cache
-        db.all(SELECT_GET, unit, type, address, address + length, now - VALID_ANS, now - RESEND_WAIT,
+        db.all(SELECT_GET, unit, type, address, address + length, 
+            now - VALID_ANS, now - RESEND_WAIT,
             function(err, rows) {
                 if (err) {
                     _io.emit('error', {'err': err});
@@ -171,9 +174,9 @@ var getRegisters = function(unit, type, address, length) {
  * and request data from device.
  */
 var pollNextGroup = function() {
-    const SELECT_NEXT_REG = "SELECT unit, type, reg, ask, ans, snd FROM cache \
+    const SELECT_NEXT_REG = "SELECT unit, type, reg FROM cache \
         WHERE ask > ? \
-        ORDER BY ask ASC, reg ASC LIMIT 1";
+        ORDER BY ask DESC, reg ASC LIMIT 1";
     const SELECT_LAST_REG = "SELECT reg FROM cache \
         WHERE unit = ? AND type = ? AND reg < ? AND ask > ? \
         ORDER BY reg DESC LIMIT 1";
