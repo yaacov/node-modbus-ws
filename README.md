@@ -13,7 +13,6 @@ With this server you can build web pages that will easily monitor and send reque
 
 - [node-modbus-ws](#node-modbus-ws)
       - [Install](#install)
-      - [Serial port support](#serial-port-support)
       - [Start the modbus-ws server](#start-the-modbus-ws-server)
       - [Server help](#server-help)
       - [Client side code](#client-side-code)
