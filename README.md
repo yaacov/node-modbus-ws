@@ -93,7 +93,8 @@ modbus-ws --help
 <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
 ```
 
-###### Use socket.io events
+###### Use socket.io events, server will replay with a "data" event.
+
 ```javascript
 // connect to sever
 var socket = io("ws://127.0.0.1:3000/");
