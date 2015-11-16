@@ -32,7 +32,9 @@ This will add the **modbus-ws** command to your path. After install, you can run
 
 Run the server from the command line:
 ```
+# use serial line (modbus-rtu)
 modbus-ws -s /dev/ttyUSB0
+# or tcp/ip (modbus-tcp)
 modbus-ws -i 192.168.1.42
 ```
 
