@@ -22,11 +22,11 @@ describe('Modbus-WS server', function() {
         server.start(serverOptions, done);
     });
     
-    it('Should get registers', function(done) {
+    it('Should get input registers', function(done) {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getRegisters', {
+            socket.emit('getInputRegisters', {
                 "unit": 1,
                 "address": 8,
                 "length": 3
@@ -45,7 +45,7 @@ describe('Modbus-WS server', function() {
         });
     });
     
-    it('Should set registers', function(done) {
+    it('Should set holding registers', function(done) {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
@@ -65,11 +65,11 @@ describe('Modbus-WS server', function() {
         });
     });
     
-    it('Should get the new values', function(done) {
+    it('Should get holding registers with the new values', function(done) {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getRegisters', {
+            socket.emit('getHoldingRegisters', {
                 "unit": 1,
                 "address": 8,
                 "length": 3
@@ -82,6 +82,26 @@ describe('Modbus-WS server', function() {
             
             expect(data).to.have.property('values').with.length(3);
             expect(data.values.toString()).to.equal([88,123,47].toString());
+            
+            socket.disconnect();
+            done()
+        });
+    });
+    
+    it('Should force one coil', function(done) {
+        var socket = io.connect(socketURL, options);
+
+        socket.on('connect', function() {
+            socket.emit('forceCoil', {
+                "unit": 1,
+                "address": 8,
+                "state": true
+            });
+        });
+
+        socket.on('data', function(data){
+            expect(data).to.have.property('state');
+            expect(data.state).to.equal(true);
             
             socket.disconnect();
             done()

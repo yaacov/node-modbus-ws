@@ -25,6 +25,10 @@ const RESEND_WAIT = 1000; // do not trigger new io-get event for N-ms.
 const MAX_LENGTH = 10; // max registers to ask in one modbus request.
 const POLL_INTERVAL = 1000; // wait N-ms between modbus polls.
 
+const TYPE_INPUT_REG = 0;
+const TYPE_HOLDING_REG = 1;
+const TYPE_COIL = 2;
+
 /**
  * Create the cache database.
  */
@@ -39,6 +43,7 @@ var createDb = function() {
 var createTable = function() {
     /* unit - unit id
      * reg  - register number
+     * type - register type [0 input, 1 holding, 2 coil, 3 digital input]
      * val  - register value
      * ask  - first time browser send request
      * ans  - last time device replied and answer sent to browser
@@ -46,12 +51,13 @@ var createTable = function() {
      */
     const CREATE_CACHE = "CREATE TABLE IF NOT EXISTS cache (\
         unit NUMBER, \
+        type NUMBER, \
         reg NUMBER, \
         val NUMBER, \
         ask NUMBER, \
         ans NUMBER, \
         snd NUMBER, \
-        PRIMARY KEY (unit, reg))";
+        PRIMARY KEY (unit, type, reg))";
     
     console.log("        Create cache table");
     db.run(CREATE_CACHE);
@@ -61,47 +67,71 @@ var createTable = function() {
  * Init cache table rows for registers.
  *
  * @param {number} unit the unit id.
+ * @param {number} type the register type.
  * @param {number} register the first register to create.
  * @param {number} length the number of registers to create.
  */
-var initRegisters = function(unit, register, length) {
-    const INSERT_NEW = "INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?)";
+var initRegisters = function(unit, type, register, length) {
+    const INSERT_NEW = "INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?)";
     var now = Date.now();
     
     // make sure each register has a row
     var stmt = db.prepare(INSERT_NEW);
     for (var i = register; i < (register + length); i++) {
-        stmt.run(unit, i, 0, now, 0, 0);
+        stmt.run(unit, type,  i, 0, now, 0, 0);
     }
     stmt.finalize();
+}
+
+/**
+ * Get holding registers using cache, and flag to get new data from device
+ *
+ * @param {number} unit the unit id.
+ * @param {number} address the first register to get.
+ * @param {number} length the number of registers to get.
+ */
+var getHoldingRegisters = function(unit, address, length) {
+    getRegisters(unit, TYPE_HOLDING_REG, address, length)
+}
+
+/**
+ * Get input registers using cache, and flag to get new data from device
+ *
+ * @param {number} unit the unit id.
+ * @param {number} address the first register to get.
+ * @param {number} length the number of registers to get.
+ */
+var getInputRegisters = function(unit, address, length) {
+    getRegisters(unit, TYPE_INPUT_REG, address, length)
 }
 
 /**
  * Get registers using cache, and flag to get new data from device
  *
  * @param {number} unit the unit id.
+ * @param {number} type the register type.
  * @param {number} address the first register to get.
  * @param {number} length the number of registers to get.
  */
-var getRegisters = function(unit, address, length) {
+var getRegisters = function(unit, type, address, length) {
     const UPDATE_ASK = "UPDATE cache SET ask = ? \
-        WHERE unit = ? AND reg >= ? AND reg < ? AND ask < ?";
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ask < ?";
     const SELECT_GET = "SELECT unit, reg, val FROM cache \
-        WHERE unit = ? AND reg >= ? AND reg < ? AND ans > ?";
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ans > ?";
     
-    initRegisters(unit, address, length);
+    initRegisters(unit, type, address, length);
     
     var now = Date.now();
     var data = new Array(length);
     
     // set ask signal
-    db.run(UPDATE_ASK, now, unit, address, address + length, now - FORGET_ASK);
+    db.run(UPDATE_ASK, now, unit, type, address, address + length, now - FORGET_ASK);
     
     // check for data in cache
-    db.all(SELECT_GET, unit, address, address + length, now - VALID_ANS,
+    db.all(SELECT_GET, unit, type, address, address + length, now - VALID_ANS,
         function(err, rows) {
             if (err) {
-                io.emit('error', {'err': err});
+                _io.emit('error', {'err': err});
             } else {
                 // if we have valid data in cache
                 if (rows.length == length) {
@@ -109,7 +139,7 @@ var getRegisters = function(unit, address, length) {
                     rows.forEach(function(row, i) {data[i] = row.val;});
                     
                     // emit data get event
-                    _emitDataGetEvent(unit, address, data);
+                    _emitDataGetEvent(unit, type, address, data);
                 }
             }
         }
@@ -123,11 +153,11 @@ var getRegisters = function(unit, address, length) {
  * and request data from device.
  */
 var pollNextGroup = function() {
-    const SELECT_NEXT_REG = "SELECT unit, reg FROM cache \
+    const SELECT_NEXT_REG = "SELECT unit, type, reg FROM cache \
         WHERE ask > ? \
         ORDER BY ask ASC LIMIT 1";
     const SELECT_LAST_REG = "SELECT reg FROM cache \
-        WHERE unit = ? AND reg < ? AND ask > ? \
+        WHERE unit = ? AND type = ? AND reg < ? AND ask > ? \
         ORDER BY reg DESC LIMIT 1";
     
     var now = Date.now();
@@ -138,10 +168,11 @@ var pollNextGroup = function() {
             console.log(err);
         } else if (row) {
             var unit = row.unit;
+            var type = row.type;
             var firstReg = row.reg;
             var lastReg;
             
-            db.get(SELECT_LAST_REG, unit, firstReg + MAX_LENGTH, now - FORGET_ASK,
+            db.get(SELECT_LAST_REG, unit, type, firstReg + MAX_LENGTH, now - FORGET_ASK,
                 function(err, row) {
                     if (err) {
                         console.log(err);
@@ -151,7 +182,7 @@ var pollNextGroup = function() {
                         
                         // ask from modbus and triger io data get event
                         // and update cache value
-                        _getRegisters(unit, firstReg, length);
+                        _getRegisters(unit, type, firstReg, length);
                     }
                 }
             );
@@ -163,27 +194,28 @@ var pollNextGroup = function() {
  * emit data get event to browser
  *
  * @param {number} unit the unit id.
+ * @param {number} type the register type.
  * @param {number} address the first register to set.
  * @param {array} data the new values to set into registers
  */
-var _emitDataGetEvent = function(unit, address, data) {
-    const SELECT_BY_SND = "SELECT unit, reg FROM cache \
-        WHERE unit = ? AND reg >= ? AND reg < ? AND snd < ?";
+var _emitDataGetEvent = function(unit, type, address, data) {
+    const SELECT_BY_SND = "SELECT unit, type, reg FROM cache \
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND snd < ?";
     const UPDATE_SND = "UPDATE cache SET snd = ? \
-        WHERE unit = ? AND reg >= ? AND reg < ?";
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
     
     var now = Date.now();
     var length = data.length;
     
-    db.all(SELECT_BY_SND, unit, address, address + length, now - RESEND_WAIT,
+    db.all(SELECT_BY_SND, unit, type, address, address + length, now - RESEND_WAIT,
         function(err, rows) {
             if (err) {
-                io.emit('error', {'err': err});
+                _io.emit('error', {'err': err});
             } else {
                 // if we need to emit data
                 if (rows.length == length) {
                     // update cache
-                    db.run(UPDATE_SND, now, unit, address, address + length);
+                    db.run(UPDATE_SND, now, unit, type, address, address + length);
                     
                     // triger data-get event
                     _io.emit('data', {
@@ -202,32 +234,53 @@ var _emitDataGetEvent = function(unit, address, data) {
  * Get modbus registers
  *
  * @param {number} unit the unit id.
+ * @param {number} type the register type.
  * @param {number} address the first register to get.
  * @param {number} length the number of registers to get
  */
-var _getRegisters = function(unit, address, length) {
+var _getRegisters = function(unit, type, address, length) {
     const UPDATE_REG = "UPDATE cache SET val= ?, ans = ?, ask = 0 \
-        WHERE unit = ? AND reg = ?";
+        WHERE unit = ? AND type = ? AND reg = ?";
     
     var now = Date.now();
     
-    _modbus.writeFC4(unit, address, length,
-        function(err, msg) {
-            if (err) {
-                io.emit('error', {'err': err});
-            } else {
-                // update data in cache, and clear ask flag
-                var stmt = db.prepare(UPDATE_REG);
-                for (i = 0; i < length; i++) {
-                    stmt.run(msg.data[i], now, unit, address + i);
+    if (type == TYPE_HOLDING_REG) {
+        _modbus.writeFC3(unit, address, length,
+            function(err, msg) {
+                if (err) {
+                    _io.emit('error', {'err': err});
+                } else {
+                    // update data in cache, and clear ask flag
+                    var stmt = db.prepare(UPDATE_REG);
+                    for (i = 0; i < length; i++) {
+                        stmt.run(msg.data[i], now, unit, type, address + i);
+                    }
+                    stmt.finalize();
+                    
+                    // emit data get event
+                    _emitDataGetEvent(unit, type, address, msg.data);
                 }
-                stmt.finalize();
-                
-                // emit data get event
-                _emitDataGetEvent(unit, address, msg.data);
             }
-        }
-    );
+        );
+    } else if (type == TYPE_INPUT_REG) {
+        _modbus.writeFC4(unit, address, length,
+            function(err, msg) {
+                if (err) {
+                    _io.emit('error', {'err': err});
+                } else {
+                    // update data in cache, and clear ask flag
+                    var stmt = db.prepare(UPDATE_REG);
+                    for (i = 0; i < length; i++) {
+                        stmt.run(msg.data[i], now, unit, type, address + i);
+                    }
+                    stmt.finalize();
+                    
+                    // emit data get event
+                    _emitDataGetEvent(unit, type, address, msg.data);
+                }
+            }
+        );
+    }
 }
 
 /**
@@ -238,20 +291,21 @@ var _getRegisters = function(unit, address, length) {
  * @param {array} data the new values to set into registers
  */
 var setRegisters = function(unit, address, data) {
-    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0 \
-        WHERE unit = ? AND reg >= ? AND reg < ?";
+    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0, ask = 0 \
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
     
     var length = data.length;
+    var type = TYPE_HOLDING_REG;
     
     initRegisters(unit, address, length);
     
     _modbus.writeFC16(unit, address, data,
         function(err, msg) {
             if (err) {
-                io.emit('error', {'err': err});
+                _io.emit('error', {'err': err});
             } else {
                 // invalidate the current value in cache
-                db.run(UPDATE_REG, unit, address, address + length);
+                db.run(UPDATE_REG, unit, type, address, address + length);
                 
                 // triger data-set event
                 _io.emit('data', {
@@ -301,9 +355,9 @@ var run = function(io, modbus) {
  */
 var _debugReadAllRows = function() {
     console.log("readAllRows cache");
-    db.all("SELECT unit, reg, val, ask, ans, snd FROM cache", function(err, rows) {
+    db.all("SELECT unit, type, reg, val, ask, ans, snd FROM cache", function(err, rows) {
         rows.forEach(function (row) {
-            console.log(row.unit, row.reg, row.ask, row.ans, row.snd);
+            console.log(row.unit, row.type, row.reg, row.ask, row.ans, row.snd);
         });
     });
 }
@@ -311,4 +365,5 @@ var _debugReadAllRows = function() {
 module.exports = {};
 module.exports.run = run;
 module.exports.setRegisters = setRegisters;
-module.exports.getRegisters = getRegisters;
+module.exports.getHoldingRegisters = getHoldingRegisters;
+module.exports.getInputRegisters = getInputRegisters;

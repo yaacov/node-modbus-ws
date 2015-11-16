@@ -28,6 +28,7 @@ li {
 }
 .orange { background-color: #F5876E; }
 .blue{ background-color: #62A9DC; }
+.green{ background-color: #32DCA0; }
 .purple { background-color: #988CC3; }
 </style>
 </head>
@@ -61,15 +62,21 @@ li {
         }
         
         socket.on('data', function(data){
-            console.log('received:', data);
+            var color;
             
-            addEntry(data.values.toString(), "orange");
+            // set message color
+            if (data.flag == 'set') 
+                color = "green";
+            else
+                color = "orange"
+            
+            addEntry(data.values.toString(), color);
         });
         
         socket.on('connect', function() {
             addEntry('connected', "purple");
             
-            socket.emit('getRegisters', {
+            socket.emit('getHoldingRegisters', {
                 "unit": 1,
                 "address": 0,
                 "length": 10,

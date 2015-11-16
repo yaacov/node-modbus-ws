@@ -21,8 +21,37 @@ var version = require('./package.json').version;
 var serialPort;
 var modbusRTU;
 
-var getRegisters;
+var getInputRegisters;
+var getHoldingRegisters;
+var forceCoil;
 var setRegisters;
+
+/**
+ * Write a Modbus "Read Holding Registers" (FC=03) to serial port,
+ * and emit the replay to websocket
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the first register.
+ * @param {number} length the total number of registers requested.
+ */
+var _getHoldingRegisters = function(unit, address, length) {
+    modbusRTU.writeFC3(unit, address, length,
+        function(err, msg) {
+            if (err) {
+                console.log(err);
+                io.emit('data', {'err': err});
+            } else {
+                io.emit('data', {
+                    'id': unit,
+                    'code': 3,
+                    'address': address,
+                    'values': msg.data,
+                    'flag': 'get'
+                });
+            }
+        }
+    );
+}
 
 /**
  * Write a Modbus "Read Input Registers" (FC=04) to serial port,
@@ -32,7 +61,7 @@ var setRegisters;
  * @param {number} address the Data Address of the first register.
  * @param {number} length the total number of registers requested.
  */
-var _getRegisters = function(unit, address, length) {
+var _getInputRegisters = function(unit, address, length) {
     modbusRTU.writeFC4(unit, address, length,
         function(err, msg) {
             if (err) {
@@ -41,8 +70,36 @@ var _getRegisters = function(unit, address, length) {
             } else {
                 io.emit('data', {
                     'id': unit,
+                    'code': 4,
                     'address': address,
                     'values': msg.data,
+                    'flag': 'get'
+                });
+            }
+        }
+    );
+}
+
+/**
+ * Write a Modbus "Force one coil" (FC=05) to serial port,
+ * and emit the replay to websocket
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the coil.
+ * @param {number} state the state to set into coil.
+ */
+var _forceCoil = function(unit, address, state) {
+    modbusRTU.writeFC5(unit, address, state,
+        function(err, msg) {
+            if (err) {
+                console.log(err);
+                io.emit('data', {'err': err});
+            } else {
+                io.emit('data', {
+                    'id': unit,
+                    'code': 5,
+                    'address': address,
+                    'state': state,
                     'flag': 'get'
                 });
             }
@@ -67,6 +124,7 @@ var _setRegisters = function(unit, address, values) {
             } else {
                 io.emit('data', {
                     'id': unit,
+                    'code': 16,
                     'address': address,
                     'values': values,
                     'flag': 'set'
@@ -94,7 +152,7 @@ var setup = function() {
             //console.log('client disconnected');
         });
         
-        socket.on('getRegisters', function(data){
+        socket.on('getHoldingRegisters', function(data){
             // check event validity
             if (!data) return;
             
@@ -112,13 +170,56 @@ var setup = function() {
             var interval = data.interval;
             if (interval) {
                 var id = setInterval(function() {
-                    getRegisters(unit, address, length);
+                    getHoldingRegisters(unit, address, length);
                 }, interval);
                 
                 intervalIDs.push(id);
             } else {
-                getRegisters(unit, address, length);
+                getHoldingRegisters(unit, address, length);
             }
+        });
+        
+        socket.on('getInputRegisters', function(data){
+            // check event validity
+            if (!data) return;
+            
+            var unit = data.unit;
+            var address = data.address;
+            var length = data.length;
+            
+            // check event validity
+            if (!unit || typeof address == 'undefined' || !length) return;
+            
+            /* if client request an interval,
+             * set a time interval and emit data
+             * periodically.
+             */
+            var interval = data.interval;
+            if (interval) {
+                var id = setInterval(function() {
+                    getInputRegisters(unit, address, length);
+                }, interval);
+                
+                intervalIDs.push(id);
+            } else {
+                getInputRegisters(unit, address, length);
+            }
+        });
+        
+        socket.on('forceCoil', function(data){
+            // check event validity
+            if (!data) return;
+            
+            var unit = data.unit;
+            var address = data.address;
+            var state = data.state;
+            
+            // check event validity
+            if (!unit || 
+                typeof address == 'undefined' || 
+                typeof state == 'undefined') return;
+            
+            forceCoil(unit, address, state);
         });
         
         socket.on('setRegisters', function(data){
@@ -240,7 +341,9 @@ var start = function(options, callback) {
     if (noCache) {
         console.log("    Setup modbus without caching.");
         
-        getRegisters = _getRegisters;
+        getHoldingRegisters = _getHoldingRegisters;
+        getInputRegisters = _getInputRegisters;
+        forceCoil = _forceCoil;
         setRegisters = _setRegisters;
     } else {
         var cache = require("./cache");
@@ -248,8 +351,12 @@ var start = function(options, callback) {
         console.log("    Setup modbus with caching.");
         
         cache.run(io, modbusRTU);
-        getRegisters = cache.getRegisters;
+        
+        getHoldingRegisters = cache.getHoldingRegisters;
+        getInputRegisters = cache.getInputRegisters;
         setRegisters = cache.setRegisters;
+        
+        forceCoil = _forceCoil; // no caching for coils
     }
     
     console.log("----------------------------------------------------");

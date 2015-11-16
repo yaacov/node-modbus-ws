@@ -107,19 +107,27 @@ socket.on('data', function(data){
 
 // ask server to get registers
 // "Read Input Registers" (FC=04) 
-socket.emit("getRegisters", {
+socket.emit("getInputRegisters", {
     "unit": 1,
     "address": 0,
     "length": 10
 });
 
-// subscribe to get registers every 1000ms
-// "Read Input Registers" (FC=04) 
-socket.emit("getRegisters", {
+// subscribe to get holding registers every 1000ms
+// "Read Holding Registers" (FC=04) 
+socket.emit("getHoldingRegisters", {
     "unit": 1,
     "address": 0,
     "length": 10,
     "interval": 1000
+});
+
+// ask server to set one coil
+// "Force one coil" (FC=5)
+socket.emit('forceCoil', {
+    "unit": 1,
+    "address": 8,
+    "state": true
 });
 
 // ask server to set registers
