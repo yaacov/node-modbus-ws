@@ -17,7 +17,8 @@ describe('Modbus-WS server', function() {
             'tcpport': 3000,
             'test': true,
             'nohttp': true,
-            'nocache': false
+            'nocache': false,
+            'noresendwait': true
         };
         server.start(serverOptions, done);
     });
@@ -37,8 +38,8 @@ describe('Modbus-WS server', function() {
             expect(data).to.have.property('flag');
             expect(data.flag).to.equal('get');
             
-            expect(data).to.have.property('values').with.length(3);
-            expect(data.values.toString()).to.equal([8, 9, 10].toString());
+            expect(data).to.have.property('data').with.length(3);
+            expect(data.data.toString()).to.equal([8, 9, 10].toString());
             
             socket.disconnect();
             done()
@@ -80,8 +81,8 @@ describe('Modbus-WS server', function() {
             expect(data).to.have.property('flag');
             expect(data.flag).to.equal('get');
             
-            expect(data).to.have.property('values').with.length(3);
-            expect(data.values.toString()).to.equal([88,123,47].toString());
+            expect(data).to.have.property('data').with.length(3);
+            expect(data.data.toString()).to.equal([88,123,47].toString());
             
             socket.disconnect();
             done()
@@ -100,8 +101,31 @@ describe('Modbus-WS server', function() {
         });
 
         socket.on('data', function(data){
-            expect(data).to.have.property('state');
-            expect(data.state).to.equal(true);
+            expect(data).to.have.property('data');
+            expect(data.data).to.equal(true);
+            
+            socket.disconnect();
+            done()
+        });
+    });
+    
+    it('Should get holding registers from cache', function(done) {
+        var socket = io.connect(socketURL, options);
+
+        socket.on('connect', function() {
+            socket.emit('getHoldingRegisters', {
+                "unit": 1,
+                "address": 8,
+                "length": 3
+            });
+        });
+
+        socket.on('data', function(data){
+            expect(data).to.have.property('flag');
+            expect(data.flag).to.equal('get');
+            
+            expect(data).to.have.property('data').with.length(3);
+            expect(data.data.toString()).to.equal([88,123,47].toString());
             
             socket.disconnect();
             done()

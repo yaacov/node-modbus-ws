@@ -25,6 +25,7 @@ var getInputRegisters;
 var getHoldingRegisters;
 var forceCoil;
 var setRegisters;
+var debug;
 
 /**
  * Write a Modbus "Read Holding Registers" (FC=03) to serial port,
@@ -42,10 +43,10 @@ var _getHoldingRegisters = function(unit, address, length) {
                 io.emit('data', {'err': err});
             } else {
                 io.emit('data', {
-                    'id': unit,
-                    'code': 3,
+                    'unit': unit,
+                    'type': 3,
                     'address': address,
-                    'values': msg.data,
+                    'data': msg.data,
                     'flag': 'get'
                 });
             }
@@ -69,10 +70,10 @@ var _getInputRegisters = function(unit, address, length) {
                 io.emit('data', {'err': err});
             } else {
                 io.emit('data', {
-                    'id': unit,
-                    'code': 4,
+                    'unit': unit,
+                    'type': 4,
                     'address': address,
-                    'values': msg.data,
+                    'data': msg.data,
                     'flag': 'get'
                 });
             }
@@ -96,11 +97,11 @@ var _forceCoil = function(unit, address, state) {
                 io.emit('data', {'err': err});
             } else {
                 io.emit('data', {
-                    'id': unit,
-                    'code': 5,
+                    'unit': unit,
+                    'type': 5,
                     'address': address,
-                    'state': state,
-                    'flag': 'get'
+                    'data': state,
+                    'flag': 'set'
                 });
             }
         }
@@ -123,10 +124,10 @@ var _setRegisters = function(unit, address, values) {
                 io.emit('data', {'err': err});
             } else {
                 io.emit('data', {
-                    'id': unit,
-                    'code': 16,
+                    'unit': unit,
+                    'type': 3,
                     'address': address,
-                    'values': values,
+                    'data': values,
                     'flag': 'set'
                 });
             }
@@ -350,13 +351,12 @@ var start = function(options, callback) {
         
         console.log("    Setup modbus with caching.");
         
-        cache.run(io, modbusRTU);
+        cache.run(io, modbusRTU, options);
         
         getHoldingRegisters = cache.getHoldingRegisters;
         getInputRegisters = cache.getInputRegisters;
+        forceCoil = cache.forceCoil;
         setRegisters = cache.setRegisters;
-        
-        forceCoil = _forceCoil; // no caching for coils
     }
     
     console.log("----------------------------------------------------");

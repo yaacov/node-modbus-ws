@@ -19,15 +19,17 @@ var db;
 var _io;
 var _modbus;
 
-const VALID_ANS = 5000; // answers are valid for N-ms.
+const VALID_ANS = 10000; // answers are valid for N-ms.
 const FORGET_ASK = 10000; // if not answered after N-ms, forget ask request.
-const RESEND_WAIT = 1000; // do not trigger new io-get event for N-ms.
 const MAX_LENGTH = 10; // max registers to ask in one modbus request.
-const POLL_INTERVAL = 1000; // wait N-ms between modbus polls.
+const POLL_INTERVAL = 500; // wait N-ms between modbus polls.
 
-const TYPE_INPUT_REG = 0;
-const TYPE_HOLDING_REG = 1;
-const TYPE_COIL = 2;
+const TYPE_INPUT_REG = 4;
+const TYPE_HOLDING_REG = 3;
+const TYPE_COIL = 1;
+const TYPE_DIGITAL_INPUT = 2;
+
+var RESEND_WAIT = 250; // do not trigger new io-get event for N-ms.
 
 /**
  * Create the cache database.
@@ -64,6 +66,21 @@ var createTable = function() {
 }
 
 /**
+ * Dump all cache rows to console
+ */
+var _debugReadAllRows = function() {
+    console.log("readAllRows cache");
+    
+    db.serialize(function() {
+        db.all("SELECT unit, type, reg, val, ask, ans, snd FROM cache", function(err, rows) {
+            rows.forEach(function (row) {
+                console.log('line: ', row.unit, row.type, row.reg, row.ask, row.ans, row.snd);
+            });
+        });
+    });
+}
+
+/**
  * Init cache table rows for registers.
  *
  * @param {number} unit the unit id.
@@ -73,14 +90,13 @@ var createTable = function() {
  */
 var initRegisters = function(unit, type, register, length) {
     const INSERT_NEW = "INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?)";
-    var now = Date.now();
     
-    // make sure each register has a row
-    var stmt = db.prepare(INSERT_NEW);
-    for (var i = register; i < (register + length); i++) {
-        stmt.run(unit, type,  i, 0, now, 0, 0);
-    }
-    stmt.finalize();
+        // make sure each register has a row
+        var stmt = db.prepare(INSERT_NEW);
+        for (var i = register; i < (register + length); i++) {
+            stmt.run(unit, type,  i, 0, 0, 0, 0);
+        }
+        stmt.finalize();
 }
 
 /**
@@ -117,33 +133,35 @@ var getRegisters = function(unit, type, address, length) {
     const UPDATE_ASK = "UPDATE cache SET ask = ? \
         WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ask < ?";
     const SELECT_GET = "SELECT unit, reg, val FROM cache \
-        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ans > ?";
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND ans > ? AND snd < ?";
     
     initRegisters(unit, type, address, length);
     
     var now = Date.now();
     var data = new Array(length);
     
-    // set ask signal
-    db.run(UPDATE_ASK, now, unit, type, address, address + length, now - FORGET_ASK);
-    
-    // check for data in cache
-    db.all(SELECT_GET, unit, type, address, address + length, now - VALID_ANS,
-        function(err, rows) {
-            if (err) {
-                _io.emit('error', {'err': err});
-            } else {
-                // if we have valid data in cache
-                if (rows.length == length) {
-                    // fill the data arry
-                    rows.forEach(function(row, i) {data[i] = row.val;});
-                    
-                    // emit data get event
-                    _emitDataGetEvent(unit, type, address, data);
+    db.serialize(function() {
+        // set ask signal
+        db.run(UPDATE_ASK, now, unit, type, address, address + length, now - FORGET_ASK);
+        
+        // check for data in cache
+        db.all(SELECT_GET, unit, type, address, address + length, now - VALID_ANS, now - RESEND_WAIT,
+            function(err, rows) {
+                if (err) {
+                    _io.emit('error', {'err': err});
+                } else {
+                    // if we have valid data in cache
+                    if (rows.length == length) {
+                        // fill the data arry
+                        rows.forEach(function(row, i) {data[i] = row.val;});
+                        
+                        // emit data get event
+                        _emitDataGetEvent(unit, type, address, data);
+                    }
                 }
             }
-        }
-    )
+        );
+    });
 }
 
 /**
@@ -153,40 +171,42 @@ var getRegisters = function(unit, type, address, length) {
  * and request data from device.
  */
 var pollNextGroup = function() {
-    const SELECT_NEXT_REG = "SELECT unit, type, reg FROM cache \
+    const SELECT_NEXT_REG = "SELECT unit, type, reg, ask, ans, snd FROM cache \
         WHERE ask > ? \
-        ORDER BY ask ASC LIMIT 1";
+        ORDER BY ask ASC, reg ASC LIMIT 1";
     const SELECT_LAST_REG = "SELECT reg FROM cache \
         WHERE unit = ? AND type = ? AND reg < ? AND ask > ? \
         ORDER BY reg DESC LIMIT 1";
     
     var now = Date.now();
     
-    // find the register with oldest ask time
-    db.get(SELECT_NEXT_REG, now - FORGET_ASK, function(err, row) {
-        if (err) {
-            console.log(err);
-        } else if (row) {
-            var unit = row.unit;
-            var type = row.type;
-            var firstReg = row.reg;
-            var lastReg;
-            
-            db.get(SELECT_LAST_REG, unit, type, firstReg + MAX_LENGTH, now - FORGET_ASK,
-                function(err, row) {
-                    if (err) {
-                        console.log(err);
-                    } else if (row) {
-                        lastReg = row.reg;
-                        var length = lastReg - firstReg + 1;
-                        
-                        // ask from modbus and triger io data get event
-                        // and update cache value
-                        _getRegisters(unit, type, firstReg, length);
+    db.serialize(function() {
+        // find the register with oldest ask time
+        db.get(SELECT_NEXT_REG, now - FORGET_ASK, function(err, row) {
+            if (err) {
+                console.log(err);
+            } else if (row) {
+                var unit = row.unit;
+                var type = row.type;
+                var firstReg = row.reg;
+                var lastReg;
+                
+                db.get(SELECT_LAST_REG, unit, type, firstReg + MAX_LENGTH, now - FORGET_ASK,
+                    function(err, row) {
+                        if (err) {
+                            console.log(err);
+                        } else if (row) {
+                            lastReg = row.reg;
+                            var length = lastReg - firstReg + 1;
+                            
+                            // ask from modbus and triger io data get event
+                            // and update cache value
+                            _getRegisters(unit, type, firstReg, length);
+                        }
                     }
-                }
-            );
-        }
+                );
+            }
+        });
     });
 }
 
@@ -201,7 +221,7 @@ var pollNextGroup = function() {
 var _emitDataGetEvent = function(unit, type, address, data) {
     const SELECT_BY_SND = "SELECT unit, type, reg FROM cache \
         WHERE unit = ? AND type = ? AND reg >= ? AND reg < ? AND snd < ?";
-    const UPDATE_SND = "UPDATE cache SET snd = ? \
+    const UPDATE_SND = "UPDATE cache SET snd = ?, ask = 0 \
         WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
     
     var now = Date.now();
@@ -216,18 +236,18 @@ var _emitDataGetEvent = function(unit, type, address, data) {
                 if (rows.length == length) {
                     // update cache
                     db.run(UPDATE_SND, now, unit, type, address, address + length);
-                    
                     // triger data-get event
                     _io.emit('data', {
-                        'id': unit,
+                        'unit': unit,
+                        'type': type,
                         'address': address,
-                        'values': data,
+                        'data': data,
                         'flag': 'get'
                     });
                 }
             }
         }
-    )
+    );
 }
 
 /**
@@ -284,6 +304,43 @@ var _getRegisters = function(unit, type, address, length) {
 }
 
 /**
+ * force one coil
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the coil.
+ * @param {number} state the state to set into coil.
+ */
+var forceCoil = function(unit, address, state) {
+    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0, ask = 0 \
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
+    
+    var length = 1;
+    var type = TYPE_COIL;
+    
+    initRegisters(unit, type, address, length);
+    
+    _modbus.writeFC5(unit, address, state,
+        function(err, msg) {
+            if (err) {
+                _io.emit('error', {'err': err});
+            } else {
+                // invalidate the current value in cache
+                db.run(UPDATE_REG, unit, type, address, address + length);
+                
+                // triger data-set event
+                _io.emit('data', {
+                    'unit': unit,
+                    'type': type,
+                    'address': address,
+                    'data': state,
+                    'flag': 'set'
+                });
+            }
+        }
+    );
+}
+
+/**
  * Set modbus registers
  *
  * @param {number} unit the unit id.
@@ -297,7 +354,7 @@ var setRegisters = function(unit, address, data) {
     var length = data.length;
     var type = TYPE_HOLDING_REG;
     
-    initRegisters(unit, address, length);
+    initRegisters(unit, type, address, length);
     
     _modbus.writeFC16(unit, address, data,
         function(err, msg) {
@@ -309,9 +366,10 @@ var setRegisters = function(unit, address, data) {
                 
                 // triger data-set event
                 _io.emit('data', {
-                    'id': unit,
+                    'unit': unit,
+                    'type': type,
                     'address': address,
-                    'values': data,
+                    'data': data,
                     'flag': 'set'
                 });
             }
@@ -332,8 +390,9 @@ var closeDb = function() {
  *
  * @param {socket.io} io the socket io object to comunicate with browser.
  * @param {modbus} modbus the modbus object to comunicate with devices.
+ * @param {object} set options options wile running.
  */
-var run = function(io, modbus) {
+var run = function(io, modbus, options) {
     createDb();
     createTable();
     
@@ -348,22 +407,20 @@ var run = function(io, modbus) {
     }
     
     setTimeout(poll, 200);
-}
-
-/**
- * Dump all cache rows to console
- */
-var _debugReadAllRows = function() {
-    console.log("readAllRows cache");
-    db.all("SELECT unit, type, reg, val, ask, ans, snd FROM cache", function(err, rows) {
-        rows.forEach(function (row) {
-            console.log(row.unit, row.type, row.reg, row.ask, row.ans, row.snd);
-        });
-    });
+    
+    /* check for options
+     */
+    if (options) {
+        // do not wait before resending data
+        if (options.noresendwait) {
+            RESEND_WAIT = 0;
+        }
+    }
 }
 
 module.exports = {};
 module.exports.run = run;
+module.exports.forceCoil = forceCoil;
 module.exports.setRegisters = setRegisters;
 module.exports.getHoldingRegisters = getHoldingRegisters;
 module.exports.getInputRegisters = getInputRegisters;
