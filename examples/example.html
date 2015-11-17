@@ -61,6 +61,8 @@ li {
             list.appendChild(entry);
         }
         
+        addEntry('Waiting to connect...', 'orange');
+        
         socket.on('data', function(data){
             var color;
             
