@@ -158,7 +158,7 @@ socket.emit('setRegisters', {
 
 // ask server to get coils
 // "Read coils" (FC=01) 
-socket.emit("getCoils, {
+socket.emit("getCoils", {
     "unit": 1,
     "address": 0,
     "length": 8
