@@ -88,6 +88,22 @@ modbus-ws --help
 
 #### Client side code
 
+###### WebSocket Events
+
+**From server to client**
+
+* 'data' - data sent to client.
+* 'error' - an error message.
+
+**From clent to sever**
+
+* 'getCoils'
+* 'getInputStatus'
+* 'getHoldingRegisters'
+* 'getInputRegisters'
+* 'forceCoil'
+* 'setRegisters'
+
 ###### Get the socket.io code:
 ```
 <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
@@ -138,6 +154,14 @@ socket.emit('setRegisters', {
     "unit": 1,
     "address": 8,
     "values": [88,123,47]
+});
+
+// ask server to get coils
+// "Read coils" (FC=01) 
+socket.emit("getCoils, {
+    "unit": 1,
+    "address": 0,
+    "length": 8
 });
 ```
 
