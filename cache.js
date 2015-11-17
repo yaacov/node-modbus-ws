@@ -375,43 +375,6 @@ var _getFC4 = function(unit, address, length) {
 }
 
 /**
- * force one coil
- *
- * @param {number} unit the slave unit address.
- * @param {number} address the Data Address of the coil.
- * @param {number} state the state to set into coil.
- */
-var forceCoil = function(unit, address, state) {
-    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0, ask = 0 \
-        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
-    
-    var length = 1;
-    var type = TYPE_COIL;
-    
-    initRegisters(unit, type, address, length);
-    
-    _modbus.writeFC5(unit, address, state,
-        function(err, msg) {
-            if (err) {
-                _io.emit('error', {'err': err});
-            } else {
-                // invalidate the current value in cache
-                db.run(UPDATE_REG, unit, type, address, address + length);
-                
-                // triger data-set event
-                _io.emit('data', {
-                    'unit': unit,
-                    'type': type,
-                    'address': address,
-                    'data': state,
-                    'flag': 'set'
-                });
-            }
-        }
-    );
-}
-
-/**
  * Get registers using cache, and flag to get new data from device
  *
  * @param {number} unit the unit id.
@@ -463,6 +426,43 @@ var getRegisters = function(unit, type, address, length) {
     );
     
     }); // end sqlite serialize
+}
+
+/**
+ * force one coil
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the coil.
+ * @param {number} state the state to set into coil.
+ */
+var forceCoil = function(unit, address, state) {
+    const UPDATE_REG = "UPDATE cache SET ans = 0, snd = 0, ask = 0 \
+        WHERE unit = ? AND type = ? AND reg >= ? AND reg < ?";
+    
+    var length = 1;
+    var type = TYPE_COIL;
+    
+    initRegisters(unit, type, address, length);
+    
+    _modbus.writeFC5(unit, address, state,
+        function(err, msg) {
+            if (err) {
+                _io.emit('error', {'err': err});
+            } else {
+                // invalidate the current value in cache
+                db.run(UPDATE_REG, unit, type, address, address + length);
+                
+                // triger data-set event
+                _io.emit('data', {
+                    'unit': unit,
+                    'type': type,
+                    'address': address,
+                    'data': state,
+                    'flag': 'set'
+                });
+            }
+        }
+    );
 }
 
 /**
