@@ -15,10 +15,11 @@ describe('Modbus-WS server', function() {
     before(function(done) {
         var serverOptions = {
             'tcpport': 3000,
-            'test': true,
-            'nohttp': true,
-            'nocache': false,
-            'noresendwait': true
+            'test': true, // use simulated port
+            'nohttp': true, // only websockets, no webapp
+            'nocache': false, // use cache
+            'pollinterval': 200, // short poll interval
+            'resendwait': 1 // send without waiting (wait 1 ms)
         };
         server.start(serverOptions, done);
     });
@@ -132,4 +133,77 @@ describe('Modbus-WS server', function() {
         });
     });
     
+    it('Should get input status', function(done) {
+        var socket = io.connect(socketURL, options);
+
+        socket.on('connect', function() {
+            socket.emit('getInputStatus', {
+                "unit": 1,
+                "address": 1,
+                "length": 8
+            });
+        });
+
+        socket.on('data', function(data){
+            expect(data).to.have.property('flag');
+            expect(data.type).to.equal(2);
+            expect(data.flag).to.equal('get');
+            
+            expect(data).to.have.property('data');
+            expect(data.data[7]).to.equal(true);
+            
+            socket.disconnect();
+            done()
+        });
+    });
+    
+    it('Should get coils after force one coil', function(done) {
+        var socket = io.connect(socketURL, options);
+
+        socket.on('connect', function() {
+            socket.emit('getInputStatus', {
+                "unit": 1,
+                "address": 8,
+                "length": 8
+            });
+        });
+
+        socket.on('data', function(data){
+            expect(data).to.have.property('flag');
+            expect(data.type).to.equal(2);
+            expect(data.flag).to.equal('get');
+            
+            expect(data).to.have.property('data');
+            expect(data.data[0]).to.equal(true);
+            expect(data.data[7]).to.equal(false);
+            
+            socket.disconnect();
+            done()
+        });
+    });
+    
+    it('Should get input status from cache', function(done) {
+        var socket = io.connect(socketURL, options);
+
+        socket.on('connect', function() {
+            socket.emit('getInputStatus', {
+                "unit": 1,
+                "address": 1,
+                "length": 8
+            });
+        });
+
+        socket.on('data', function(data){
+            expect(data).to.have.property('flag');
+            expect(data.type).to.equal(2);
+            expect(data.flag).to.equal('get');
+            
+            expect(data).to.have.property('data');
+            expect(data.data[0]).to.equal(false);
+            expect(data.data[7]).to.equal(true);
+            
+            socket.disconnect();
+            done()
+        });
+    });
 });

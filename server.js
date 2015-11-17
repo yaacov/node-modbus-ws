@@ -28,6 +28,60 @@ var setRegisters;
 var debug;
 
 /**
+ * Write a Modbus "Read Coils" (FC=01) to serial port,
+ * and emit the replay to websocket
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the first coil.
+ * @param {number} length the total number of coils requested.
+ */
+var _getCoils = function(unit, address, length) {
+    modbusRTU.writeFC1(unit, address, length,
+        function(err, msg) {
+            if (err) {
+                console.log(err);
+                io.emit('data', {'err': err});
+            } else {
+                io.emit('data', {
+                    'unit': unit,
+                    'type': 1,
+                    'address': address,
+                    'data': msg.data,
+                    'flag': 'get'
+                });
+            }
+        }
+    );
+}
+
+/**
+ * Write a Modbus "Read input status" (FC=02) to serial port,
+ * and emit the replay to websocket
+ *
+ * @param {number} unit the slave unit address.
+ * @param {number} address the Data Address of the first digital input.
+ * @param {number} length the total number of digital inputs requested.
+ */
+var _getInputStatus = function(unit, address, length) {
+    modbusRTU.writeFC2(unit, address, length,
+        function(err, msg) {
+            if (err) {
+                console.log(err);
+                io.emit('data', {'err': err});
+            } else {
+                io.emit('data', {
+                    'unit': unit,
+                    'type': 2,
+                    'address': address,
+                    'data': msg.data,
+                    'flag': 'get'
+                });
+            }
+        }
+    );
+}
+
+/**
  * Write a Modbus "Read Holding Registers" (FC=03) to serial port,
  * and emit the replay to websocket
  *
@@ -151,6 +205,60 @@ var setup = function() {
             intervalIDs.map(clearInterval);
             
             //console.log('client disconnected');
+        });
+        
+        socket.on('getCoils', function(data){
+            // check event validity
+            if (!data) return;
+            
+            var unit = data.unit;
+            var address = data.address;
+            var length = data.length;
+            
+            // check event validity
+            if (!unit || typeof address == 'undefined' || !length) return;
+            
+            /* if client request an interval,
+             * set a time interval and emit data
+             * periodically.
+             */
+            var interval = data.interval;
+            if (interval) {
+                var id = setInterval(function() {
+                    getCoils(unit, address, length);
+                }, interval);
+                
+                intervalIDs.push(id);
+            } else {
+                getCoils(unit, address, length);
+            }
+        });
+        
+        socket.on('getInputStatus', function(data){
+            // check event validity
+            if (!data) return;
+            
+            var unit = data.unit;
+            var address = data.address;
+            var length = data.length;
+            
+            // check event validity
+            if (!unit || typeof address == 'undefined' || !length) return;
+            
+            /* if client request an interval,
+             * set a time interval and emit data
+             * periodically.
+             */
+            var interval = data.interval;
+            if (interval) {
+                var id = setInterval(function() {
+                    getInputStatus(unit, address, length);
+                }, interval);
+                
+                intervalIDs.push(id);
+            } else {
+                getInputStatus(unit, address, length);
+            }
         });
         
         socket.on('getHoldingRegisters', function(data){
@@ -342,6 +450,8 @@ var start = function(options, callback) {
     if (noCache) {
         console.log("    Setup modbus without caching.");
         
+        getCoils = _getCoils;
+        getInputStatus = _getInputStatus;
         getHoldingRegisters = _getHoldingRegisters;
         getInputRegisters = _getInputRegisters;
         forceCoil = _forceCoil;
@@ -353,6 +463,8 @@ var start = function(options, callback) {
         
         cache.run(io, modbusRTU, options);
         
+        getCoils = cache.getCoils;
+        getInputStatus = cache.getInputStatus;
         getHoldingRegisters = cache.getHoldingRegisters;
         getInputRegisters = cache.getInputRegisters;
         forceCoil = cache.forceCoil;
