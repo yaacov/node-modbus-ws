@@ -520,18 +520,18 @@ var closeDb = function() {
 var run = function(io, modbus, options) {
     /* check for options
      */
-    if (options) {
-        // answers are valid for N-ms.
-        VALID_ANS = options.validans || 5000;
-        // do not trigger new io-get event for N-ms.
-        RESEND_WAIT = options.resendwait || 100;
-        // if not answered after N-ms, forget ask request.
-        FORGET_ASK = options.forgetask || 10000;
-        // max registers to ask in one modbus request.
-        MAX_LENGTH = options.maxlength || 10;
-        // wait N-ms between modbus polls.
-        POLL_INTERVAL = options.pollinterval || 1000; 
-    }
+    if (!options) options = {};
+    
+    // answers are valid for N-ms.
+    VALID_ANS = options.validans || 5000;
+    // do not trigger new io-get event for N-ms.
+    RESEND_WAIT = options.resendwait || 100;
+    // if not answered after N-ms, forget ask request.
+    FORGET_ASK = options.forgetask || 10000;
+    // max registers to ask in one modbus request.
+    MAX_LENGTH = options.maxlength || 10;
+    // wait N-ms between modbus polls.
+    POLL_INTERVAL = options.pollinterval || 500; 
     
     // print out cache options line
     console.log('        Cache options: ',  VALID_ANS, RESEND_WAIT, 
