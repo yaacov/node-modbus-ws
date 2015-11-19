@@ -207,7 +207,7 @@ var setup = function() {
             //console.log('client disconnected');
         });
         
-        socket.on('getCoils', function(data){
+        socket.on('readCoils', function(data){
             // check event validity
             if (!data) return;
             
@@ -234,7 +234,7 @@ var setup = function() {
             }
         });
         
-        socket.on('getInputStatus', function(data){
+        socket.on('readDiscreteInputs', function(data){
             // check event validity
             if (!data) return;
             
@@ -261,7 +261,7 @@ var setup = function() {
             }
         });
         
-        socket.on('getHoldingRegisters', function(data){
+        socket.on('readHoldingRegisters', function(data){
             // check event validity
             if (!data) return;
             
@@ -288,7 +288,7 @@ var setup = function() {
             }
         });
         
-        socket.on('getInputRegisters', function(data){
+        socket.on('readInputRegisters', function(data){
             // check event validity
             if (!data) return;
             
@@ -315,7 +315,7 @@ var setup = function() {
             }
         });
         
-        socket.on('forceCoil', function(data){
+        socket.on('writeCoil', function(data){
             // check event validity
             if (!data) return;
             
@@ -331,7 +331,7 @@ var setup = function() {
             forceCoil(unit, address, state);
         });
         
-        socket.on('setRegisters', function(data){
+        socket.on('writeRegisters', function(data){
             // check event validity
             if (!data) return;
             

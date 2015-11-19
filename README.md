@@ -97,12 +97,12 @@ modbus-ws --help
 
 **From clent to sever**
 
-* 'getCoils'
-* 'getInputStatus'
-* 'getHoldingRegisters'
-* 'getInputRegisters'
-* 'forceCoil'
-* 'setRegisters'
+* 'readCoils'
+* 'readDiscreteInputs'
+* 'readHoldingRegisters'
+* 'readInputRegisters'
+* 'writeCoil'
+* 'writeRegisters'
 
 ###### Get the socket.io code:
 ```
@@ -125,7 +125,7 @@ socket.on('data', function(data){
 
 // ask server to get registers
 // "Read Input Registers" (FC=04) 
-socket.emit("getInputRegisters", {
+socket.emit("readInputRegisters", {
     "unit": 1,
     "address": 0,
     "length": 10
@@ -133,7 +133,7 @@ socket.emit("getInputRegisters", {
 
 // subscribe to get holding registers every 1000ms
 // "Read Holding Registers" (FC=04) 
-socket.emit("getHoldingRegisters", {
+socket.emit("readHoldingRegisters", {
     "unit": 1,
     "address": 0,
     "length": 10,
@@ -142,7 +142,7 @@ socket.emit("getHoldingRegisters", {
 
 // ask server to set one coil
 // "Force one coil" (FC=5)
-socket.emit('forceCoil', {
+socket.emit('writeCoil', {
     "unit": 1,
     "address": 8,
     "state": true
@@ -150,7 +150,7 @@ socket.emit('forceCoil', {
 
 // ask server to set registers
 // "Preset Multiple Registers" (FC=16)
-socket.emit('setRegisters', {
+socket.emit('writeRegisters', {
     "unit": 1,
     "address": 8,
     "values": [88,123,47]
@@ -158,7 +158,7 @@ socket.emit('setRegisters', {
 
 // ask server to get coils
 // "Read coils" (FC=01) 
-socket.emit("getCoils", {
+socket.emit("readCoils", {
     "unit": 1,
     "address": 0,
     "length": 8

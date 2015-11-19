@@ -78,7 +78,7 @@ li {
         socket.on('connect', function() {
             addEntry('connected', "purple");
             
-            socket.emit('getHoldingRegisters', {
+            socket.emit('readHoldingRegisters', {
                 "unit": 1,
                 "address": 0,
                 "length": 10,

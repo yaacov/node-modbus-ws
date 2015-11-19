@@ -28,7 +28,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getInputRegisters', {
+            socket.emit('readInputRegisters', {
                 "unit": 1,
                 "address": 8,
                 "length": 3
@@ -51,7 +51,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('setRegisters', {
+            socket.emit('writeRegisters', {
                 "unit": 1,
                 "address": 8,
                 "values": [88,123,47]
@@ -71,7 +71,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getHoldingRegisters', {
+            socket.emit('readHoldingRegisters', {
                 "unit": 1,
                 "address": 8,
                 "length": 3
@@ -94,7 +94,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('forceCoil', {
+            socket.emit('writeCoil', {
                 "unit": 1,
                 "address": 8,
                 "state": true
@@ -114,7 +114,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getHoldingRegisters', {
+            socket.emit('readHoldingRegisters', {
                 "unit": 1,
                 "address": 8,
                 "length": 3
@@ -137,7 +137,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getInputStatus', {
+            socket.emit('readDiscreteInputs', {
                 "unit": 1,
                 "address": 1,
                 "length": 8
@@ -161,7 +161,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getInputStatus', {
+            socket.emit('readDiscreteInputs', {
                 "unit": 1,
                 "address": 8,
                 "length": 8
@@ -186,7 +186,7 @@ describe('Modbus-WS server', function() {
         var socket = io.connect(socketURL, options);
 
         socket.on('connect', function() {
-            socket.emit('getInputStatus', {
+            socket.emit('readDiscreteInputs', {
                 "unit": 1,
                 "address": 1,
                 "length": 8
