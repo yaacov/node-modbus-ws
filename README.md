@@ -23,6 +23,10 @@ Install the server:
 ```
 npm install modbus-ws -g
 ```
+If npm install fails because of root permissions try:
+```
+sudo npm install --unsafe-perm modbus-ws -g
+```
 
 This will add the **modbus-ws** command to your path. After install, you can run the server by typing **modbus-ws** on the command line.
 
