@@ -422,7 +422,7 @@ var start = function(options, callback) {
         var SerialPort = require("serialport").SerialPort;
         
         console.log("    Setup serial port:", port, baud);
-        serialPort = new SerialPort(port, {baudrate: baud});
+        serialPort = new SerialPort(port, {baudrate: baud}, false);
     } else {
         console.log("    Setup test (simulated) port.");
         serialPort = new ModbusRTU.TestPort();
