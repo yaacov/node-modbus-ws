@@ -419,10 +419,10 @@ var start = function(options, callback) {
         console.log("    Setup tcp/ip port:", ip);
         serialPort = new ModbusRTU.TcpPort(ip);
     } else if (port) {
-        var SerialPort = require("serialport").SerialPort;
+        var SerialPort = require("serialport");
         
         console.log("    Setup serial port:", port, baud);
-        serialPort = new SerialPort(port, {baudrate: baud}, false);
+        serialPort = new SerialPort(port, {baudRate: baud}, false);
     } else {
         console.log("    Setup test (simulated) port.");
         serialPort = new ModbusRTU.TestPort();
