@@ -1,16 +1,16 @@
 /**
  * Copyright (c) 2015, Yaacov Zamir <kobi.zamir@gmail.com>
  *
- * Permission to use, copy, modify, and/or distribute this software for any 
- * purpose with or without fee is hereby granted, provided that the above 
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES 
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR 
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES 
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF  THIS SOFTWARE.
  */
 
@@ -197,27 +197,27 @@ var setup = function() {
      */
     io.on('connection', function(socket){
         var intervalIDs = [];
-        
+
         //console.log('client connected');
-        
+
         socket.on('disconnect', function(){
             // clear all periodically requests
             intervalIDs.map(clearInterval);
-            
+
             //console.log('client disconnected');
         });
-        
+
         socket.on('readCoils', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var length = data.length;
-            
+
             // check event validity
             if (!unit || typeof address == 'undefined' || !length) return;
-            
+
             /* if client request an interval,
              * set a time interval and emit data
              * periodically.
@@ -227,24 +227,24 @@ var setup = function() {
                 var id = setInterval(function() {
                     getCoils(unit, address, length);
                 }, interval);
-                
+
                 intervalIDs.push(id);
             } else {
                 getCoils(unit, address, length);
             }
         });
-        
+
         socket.on('readDiscreteInputs', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var length = data.length;
-            
+
             // check event validity
             if (!unit || typeof address == 'undefined' || !length) return;
-            
+
             /* if client request an interval,
              * set a time interval and emit data
              * periodically.
@@ -254,24 +254,24 @@ var setup = function() {
                 var id = setInterval(function() {
                     getInputStatus(unit, address, length);
                 }, interval);
-                
+
                 intervalIDs.push(id);
             } else {
                 getInputStatus(unit, address, length);
             }
         });
-        
+
         socket.on('readHoldingRegisters', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var length = data.length;
-            
+
             // check event validity
             if (!unit || typeof address == 'undefined' || !length) return;
-            
+
             /* if client request an interval,
              * set a time interval and emit data
              * periodically.
@@ -281,24 +281,24 @@ var setup = function() {
                 var id = setInterval(function() {
                     getHoldingRegisters(unit, address, length);
                 }, interval);
-                
+
                 intervalIDs.push(id);
             } else {
                 getHoldingRegisters(unit, address, length);
             }
         });
-        
+
         socket.on('readInputRegisters', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var length = data.length;
-            
+
             // check event validity
             if (!unit || typeof address == 'undefined' || !length) return;
-            
+
             /* if client request an interval,
              * set a time interval and emit data
              * periodically.
@@ -308,40 +308,40 @@ var setup = function() {
                 var id = setInterval(function() {
                     getInputRegisters(unit, address, length);
                 }, interval);
-                
+
                 intervalIDs.push(id);
             } else {
                 getInputRegisters(unit, address, length);
             }
         });
-        
+
         socket.on('writeCoil', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var state = data.state;
-            
+
             // check event validity
-            if (!unit || 
-                typeof address == 'undefined' || 
+            if (!unit ||
+                typeof address == 'undefined' ||
                 typeof state == 'undefined') return;
-            
+
             forceCoil(unit, address, state);
         });
-        
+
         socket.on('writeRegisters', function(data){
             // check event validity
             if (!data) return;
-            
+
             var unit = data.unit;
             var address = data.address;
             var values = data.values;
-            
+
             // check event validity
             if (!unit || typeof address == 'undefined' || !values) return;
-            
+
             setRegisters(unit, address, values);
         });
     });
@@ -364,7 +364,7 @@ var stop = function() {
 var run_wsd = function(tcpPort, callback) {
     // run ws server
     io = require('socket.io')(tcpPort);
-    
+
     /* Setup WebSocket event listener
      */
     setup();
@@ -382,11 +382,11 @@ var run_httpd = function(tcpPort, callback) {
     var app = require('./app');
     var http = require('http').Server(app);
     io = require('socket.io')(http);
-    
+
     /* Setup WebSocket event listener
      */
     setup();
-    
+
     /* Setup http listener
      */
     http.listen(tcpPort);
@@ -406,13 +406,13 @@ var start = function(options, callback) {
     var test = options.test || true;
     var noCache = options.nocache || false;
     var noHttp = options.nohttp || false;
-    
+
     /* log server title and version
      */
     console.log();
     console.log('----------------------------------------------------');
     console.log(title, version);
-    
+
     /* open a serial port and setup modbus master
      */
     if (ip) {
@@ -420,7 +420,7 @@ var start = function(options, callback) {
         serialPort = new ModbusRTU.TcpPort(ip);
     } else if (port) {
         var SerialPort = require("serialport");
-        
+
         console.log("    Setup serial port:", port, baud);
         serialPort = new SerialPort(port, {baudRate: baud}, false);
     } else {
@@ -429,27 +429,27 @@ var start = function(options, callback) {
     }
     modbusRTU = new ModbusRTU(serialPort);
     modbusRTU.open();
-    
+
     /* set up express web application / only web socket server
      */
     if (noHttp) {
         // run only web sockets server
         console.log("    Server is running, ws://127.0.0.1:" + tcpPort);
-         
+
         run_wsd(tcpPort);
     } else {
         // run express application
         // with web sockets
         console.log("    Server is running, http://127.0.0.1:" + tcpPort);
-        
+
         run_httpd(tcpPort);
     }
-    
+
     /* set up caching
      */
     if (noCache) {
         console.log("    Setup modbus without caching.");
-        
+
         getCoils = _getCoils;
         getInputStatus = _getInputStatus;
         getHoldingRegisters = _getHoldingRegisters;
@@ -458,11 +458,11 @@ var start = function(options, callback) {
         setRegisters = _setRegisters;
     } else {
         var cache = require("./cache");
-        
+
         console.log("    Setup modbus with caching.");
-        
+
         cache.run(io, modbusRTU, options);
-        
+
         getCoils = cache.getCoils;
         getInputStatus = cache.getInputStatus;
         getHoldingRegisters = cache.getHoldingRegisters;
@@ -470,10 +470,10 @@ var start = function(options, callback) {
         forceCoil = cache.forceCoil;
         setRegisters = cache.setRegisters;
     }
-    
+
     console.log("----------------------------------------------------");
     console.log();
-    
+
     // callback
     if (callback) callback();
 }
