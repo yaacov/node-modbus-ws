@@ -1,6 +1,6 @@
 {
   "name": "modbus-ws",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "NodeJS Modbus to WebSocket bridge",
   "main": "index.js",
   "bin": {
