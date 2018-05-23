@@ -16,8 +16,8 @@ ul {
     list-style: none;
 }
 li {
-    width: 500px; 
-    height: 30px;  
+    width: 500px;
+    height: 30px;
     margin: 0 0 7px 0;
     display: block;
     margin: 10px 0 7px 0;
@@ -37,47 +37,47 @@ li {
     <p>Welcome to Modbus-WS data monitor page</p>
 
     <h2>Data received:</h2>
-    
+
     <ul id="data">
     </ul>
-    
-    <script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
     <script>
         var socket = io("ws://127.0.0.1:3000/");
-        
+
         var addEntry = function(text, color) {
             var list = document.getElementById('data');
-            
+
             // don't let list get too long
             if (list.children.length > 10) {
                 while (list.firstChild) {
                     list.removeChild(list.firstChild);
                 }
             }
-            
+
             var entry = document.createElement('li');
             entry.className = color;
             entry.appendChild(document.createTextNode(text));
             list.appendChild(entry);
         }
-        
+
         addEntry('Waiting to connect...', 'orange');
-        
+
         socket.on('data', function(data){
             var color;
-            
+
             // set message color
-            if (data.flag == 'set') 
+            if (data.flag == 'set')
                 color = "green";
             else
                 color = "orange"
-            
+
             addEntry(data.data.toString(), color);
         });
-        
+
         socket.on('connect', function() {
             addEntry('connected', "purple");
-            
+
             socket.emit('readHoldingRegisters', {
                 "unit": 1,
                 "address": 0,
@@ -85,7 +85,7 @@ li {
                 "interval": 1000
             });
         });
-        
+
         socket.on('disconnect', function() {
             addEntry('disconnected', "blue");
         });
