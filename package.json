@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node ./bin/modbus-ws.js",
+    "start-serial": "node ./bin/modbus-ws.js -s /dev/ttyACM0 -b 19200",
     "test": "mocha"
   },
   "repository": {
