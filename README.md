@@ -99,7 +99,7 @@ modbus-ws --help
 * 'data' - data sent to client.
 * 'error' - an error message.
 
-**From clent to sever**
+**From client to server**
 
 * 'readCoils'
 * 'readDiscreteInputs'
