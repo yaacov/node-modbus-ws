@@ -21,6 +21,8 @@ var version = require('./package.json').version;
 var serialPort;
 var modbusRTU;
 
+var getCoils;
+var getInputStatus;
 var getInputRegisters;
 var getHoldingRegisters;
 var forceCoil;
@@ -363,7 +365,9 @@ var stop = function() {
  */
 var run_wsd = function(tcpPort, callback) {
     // run ws server
-    io = require('socket.io')(tcpPort);
+    io = require('socket.io')(tcpPort, {
+        allowEIO3: true // false by default
+    });
 
     /* Setup WebSocket event listener
      */
@@ -381,8 +385,9 @@ var run_httpd = function(tcpPort, callback) {
     // with websockets
     var app = require('./app');
     var http = require('http').Server(app);
-    io = require('socket.io')(http);
-
+    io = require('socket.io')(http, {
+        allowEIO3: true // false by default
+    });
     /* Setup WebSocket event listener
      */
     setup();
@@ -403,7 +408,6 @@ var start = function(options, callback) {
     var port = options.serial || false;
     var baud = options.baudrate || 9600;
     var ip = options.ip || false;
-    var test = options.test || true;
     var noCache = options.nocache || false;
     var noHttp = options.nohttp || false;
 
@@ -415,20 +419,17 @@ var start = function(options, callback) {
 
     /* open a serial port and setup modbus master
      */
+    modbusRTU = new ModbusRTU();
     if (ip) {
         console.log("    Setup tcp/ip port:", ip);
-        serialPort = new ModbusRTU.TcpPort(ip);
+        // open connection to a tcp line
+        modbusRTU.connectTCP(ip, { port: 502 });
     } else if (port) {
-        var SerialPort = require("serialport");
-
         console.log("    Setup serial port:", port, baud);
-        serialPort = new SerialPort(port, {baudRate: parseInt(baud)}, false);
+        modbusRTU.connectRTUBuffered(port, { baudRate: parseInt(baud) });
     } else {
-        console.log("    Setup test (simulated) port.");
-        serialPort = new ModbusRTU.TestPort();
+        throw new Error("Test mode is no longer supported in modbus-serial");
     }
-    modbusRTU = new ModbusRTU(serialPort);
-    modbusRTU.open();
 
     /* set up express web application / only web socket server
      */
