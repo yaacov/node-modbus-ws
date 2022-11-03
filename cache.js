@@ -529,7 +529,7 @@ var run = function(io, modbus, options) {
     // if not answered after N-ms, forget ask request.
     FORGET_ASK = options.forgetask || 10000;
     // max registers to ask in one modbus request.
-    MAX_LENGTH = options.maxlength || 10;
+    MAX_LENGTH = parseInt(options.maxlength) || 10;
     // wait N-ms between modbus polls.
     POLL_INTERVAL = options.pollinterval || 500; 
     
