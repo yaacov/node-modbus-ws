@@ -31,6 +31,8 @@ program
     .option('-P, --tcpport <number>', 'Server port number [3000]', numberRegex, 3000)
     .option('-c, --nocache', 'Do not use caching for modbus comunication. [false]', false)
     .option('-w, --nohttp', 'Run only websocket server, no httpd. [false]', false)
+    .option('-m, --maxlength <number>', 'Max registers/coils to read in one modbus request. [10]', numberRegex, 10)
+
     .on('--help', function(){
         console.log('  Examples:');
         console.log('');
